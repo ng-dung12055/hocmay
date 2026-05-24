@@ -131,8 +131,4 @@ pytest -q
   - `1 = phishing`
   - `0 = legitimate`
 
-## Ghi Chú Học Thuật
 
-- Một số đặc trưng lịch sử trong UCI như traffic, PageRank và Google Index được tái hiện bằng proxy hiện đại/best-effort vì nguồn gốc ban đầu đã lỗi thời.
-- Khi truy vấn live thất bại, hệ thống dùng `feature_defaults` học từ tập train để vẫn trả kết quả.
-- Danh sách URL ví dụ để demo được tách sang `sample_urls.md`.
