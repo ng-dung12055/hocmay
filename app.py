@@ -7,6 +7,10 @@ hiển thị giải thích SHAP waterfall kèm đánh giá loại rủi ro.
 
 from __future__ import annotations
 
+import ipaddress
+import re
+from urllib.parse import urlsplit
+
 import joblib
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -18,6 +22,61 @@ from cybershield_ai.feature_extraction import configure_feature_defaults, scan_u
 from cybershield_ai.xai import build_tree_explainer, get_positive_class_explanation
 
 MODEL_PATH = MODEL_DIR / "cybershield_ai_model.joblib"
+
+_HOSTNAME_LABEL_RE = re.compile(r"^(?=.{1,63}$)[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$")
+_ALLOWED_SCHEMES = {"http", "https"}
+
+
+def validate_url_input(text: str) -> str | None:
+    """Kiểm tra URL người dùng nhập.
+
+    Trả về thông báo lỗi tiếng Việt nếu URL không hợp lệ,
+    hoặc ``None`` nếu URL có thể đem đi quét.
+    """
+    if not text or not text.strip():
+        return "Hãy nhập một URL để quét."
+    candidate = text.strip()
+    if any(ch.isspace() for ch in candidate):
+        return "URL không được chứa khoảng trắng."
+
+    if "://" in candidate:
+        scheme = candidate.split("://", 1)[0].lower()
+        if scheme not in _ALLOWED_SCHEMES:
+            return f"Chỉ hỗ trợ giao thức http hoặc https (đã nhận: '{scheme}')."
+        normalized = candidate
+    else:
+        normalized = "http://" + candidate
+
+    try:
+        parsed = urlsplit(normalized)
+    except ValueError:
+        return "Không phân tích được URL. Hãy kiểm tra lại định dạng."
+
+    host = (parsed.hostname or "").strip()
+    if not host:
+        return "Không xác định được hostname trong URL."
+
+    try:
+        ipaddress.ip_address(host)
+        return None
+    except ValueError:
+        pass
+
+    if "." not in host:
+        return (
+            f"'{host}' không phải URL hợp lệ: thiếu tên miền cấp cao (TLD) như .com, .vn, .net..."
+        )
+
+    labels = host.split(".")
+    for label in labels:
+        if not _HOSTNAME_LABEL_RE.match(label):
+            return f"Hostname '{host}' chứa nhãn không hợp lệ: '{label}'."
+
+    tld = labels[-1]
+    if len(tld) < 2 or not tld.isalpha():
+        return f"Phần đuôi tên miền '.{tld}' không hợp lệ."
+
+    return None
 
 
 @st.cache_resource(show_spinner=False)
@@ -129,8 +188,10 @@ def main() -> None:
     if not run_scan:
         return
 
-    if not url_input.strip():
-        st.warning("Hãy nhập một URL để quét.")
+    validation_error = validate_url_input(url_input)
+    if validation_error:
+        st.warning(validation_error)
+        st.caption("Ví dụ URL hợp lệ: `https://example.com`")
         return
 
     with st.spinner("Đang quét URL, bóc tách đặc trưng và giải thích bằng SHAP..."):
