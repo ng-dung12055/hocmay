@@ -244,9 +244,12 @@ def run_training_pipeline(
             cv=cv,
             path=reports_dir / "learning_curve_random_forest.png",
             csv_path=reports_dir / "learning_curve_random_forest.csv",
+            random_state=random_state,
         )
 
-    background = X_train_selected.sample(min(200, len(X_train_selected)), random_state=random_state).reset_index(drop=True)
+    background = X_model_train_selected.sample(
+        min(200, len(X_model_train_selected)), random_state=random_state
+    ).reset_index(drop=True)
     shap_sample = X_test_selected.sample(min(250, len(X_test_selected)), random_state=random_state).reset_index(drop=True)
     explainer = build_tree_explainer(best_rf, background)
     shap_explanation = get_positive_class_explanation(explainer, shap_sample)
