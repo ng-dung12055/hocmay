@@ -691,6 +691,7 @@ def save_learning_curve_plot(
     path: Path,
     csv_path: Path,
     scoring: str = "f1",
+    random_state: int = 42,
 ) -> pd.DataFrame:
     """Compute and save a learning curve for overfit/underfit diagnosis."""
     train_sizes, train_scores, validation_scores = learning_curve(
@@ -702,7 +703,7 @@ def save_learning_curve_plot(
         n_jobs=-1,
         train_sizes=np.linspace(0.1, 1.0, 5),
         shuffle=True,
-        random_state=42,
+        random_state=random_state,
     )
     curve_df = pd.DataFrame(
         {

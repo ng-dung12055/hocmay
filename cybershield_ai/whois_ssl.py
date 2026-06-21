@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import socket
 import ssl
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any
@@ -13,6 +14,8 @@ try:
     import whois
 except ImportError:  # pragma: no cover
     whois = None
+
+_WHOIS_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="whois-lookup")
 
 
 def _feature_ssl_final_state(context: ScanContext) -> int | None:
@@ -77,8 +80,12 @@ def _feature_dns_record(context: ScanContext) -> int | None:
 def _lookup_whois(domain: str) -> Any | None:
     if whois is None or not domain:
         return None
+    future = _WHOIS_EXECUTOR.submit(whois.whois, domain)
     try:
-        return whois.whois(domain)
+        return future.result(timeout=REQUEST_TIMEOUT)
+    except FuturesTimeoutError:
+        future.cancel()
+        return None
     except Exception:
         return None
 
